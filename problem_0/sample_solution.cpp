@@ -2,7 +2,7 @@
 #include <vector>
 #include <cstdint>
 #include <algorithm>
-
+#include <thread>
 
 std::istream& operator>>(std::istream& in, __int128& value) {
     std::string s;
@@ -42,20 +42,36 @@ std::ostream& operator<<(std::ostream& out, __int128 value) {
     return out;
 }
 
+__int128 n;
+std::vector<__int128> factors;
+
+int thread_counter = std::thread::hardware_concurrency();
+std::mutex m;
+
+void worker(int start) {
+    for (__int128 p = start; p * p <= n; p += thread_counter) {
+        while (n % p == 0) {
+            m.lock();
+            factors.push_back(p);
+            n /= p;
+            m.unlock();
+        }
+    }
+}
+
 int main() {
-    __int128 n;
     std::cin >> n;
     if (n <= 1) {
         return 0;
     }
-
-    std::vector<__int128> factors;
-    for (__int128 p = 2; p <= n / p; ++p) {
-        while (n % p == 0) {
-            factors.push_back(p);
-            n /= p;
-        }
+    std::vector<std::thread> threads(thread_counter);
+    for (int i = 2;i < 2 + thread_counter;++i) {
+        threads[i - 2] = std::thread(worker, i);
     }
+    for (int i = 0;i < thread_counter;++i) {
+        threads[i].join();
+    }
+
     if (n > 1) {
         factors.push_back(n);
     }
